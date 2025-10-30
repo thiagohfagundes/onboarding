@@ -31,3 +31,7 @@ class Processo(rx.Model, table=True):
     progresso: int = 0
     data_criacao: datetime | None = None
     data_inicio: datetime | None = None
+    #responsavel
+    #etapas
+    #empresa
+    #equipe

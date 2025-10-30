@@ -13,3 +13,15 @@ def base_page(child: rx.Component) -> rx.Component:
         ),
         height="100vh",
     )
+
+def base_auth_page(child: rx.Component) -> rx.Component:
+    return rx.el.div(
+        child,
+        class_name="flex flex-col items-center justify-center h-screen bg-gray-100",
+    )
+
+def base_blank_page(child: rx.Component) -> rx.Component:
+    return rx.el.div(
+        child,
+        class_name="flex flex-col items-center justify-center h-screen bg-gray-100",
+    )

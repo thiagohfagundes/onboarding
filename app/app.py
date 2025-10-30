@@ -4,9 +4,11 @@ import reflex as rx
 
 from rxconfig import config
 
-from app.pages.base_page import base_page
+from app.pages.base_page import base_page, base_blank_page
 from app.pages.onboardings_details import container_onboarding_details
 from app.pages.templates_list import templates_page, TemplateListViewState
+from app.pages.new_onboarding_details import detalhes_onboarding
+from app.pages.auth_pages import sign_up, sign_in
 
 from app.pages.new_onboarding_list import onboardings_page, OnboardingListState
 
@@ -29,11 +31,6 @@ def detalhes_tarefa():
         rx.text("Detalhes da tarefa")
     )
 
-def detalhes_onboarding():
-    return base_page(
-        rx.text("Detalhes do onboarding")
-    )
-
 app = rx.App()
 app.add_page(index)
 
@@ -45,3 +42,7 @@ app.add_page(templates_page, route="/templates", on_load=TemplateListViewState.l
 app.add_page(detalhes_onboarding, route='/onboardings/[id]')
 app.add_page(detalhes_tarefa, route='/tarefa/[id]')
 app.add_page(detalhes_onboarding, route='/templates/[id]')
+
+#Auth
+app.add_page(sign_in, route="/sign-in")
+app.add_page(sign_up, route="/sign-up")
