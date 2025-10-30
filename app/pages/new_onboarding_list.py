@@ -3,6 +3,7 @@ from sqlmodel import select
 from app.models.processo import Processo
 from typing import List
 
+from app.components.componentes_gerais import heading_pagina
 from app.components.onboardings_list import create_onboarding_dialog, status_badge, progress_bar
 
 class OnboardingListState(rx.State):
@@ -21,7 +22,7 @@ def onboardings_page() -> rx.Component:
     return rx.el.main(
         rx.el.div(
             rx.el.div(
-                rx.el.h1("Onboardings", class_name="text-3xl font-bold"),
+                heading_pagina("Onboardings", "Gerencie todos os seus processos de onboarding de clientes."),
                 create_onboarding_dialog(),
                 class_name="flex justify-between items-center",
             ),

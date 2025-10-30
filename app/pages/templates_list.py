@@ -1,53 +1,8 @@
 import reflex as rx
-
-# EXCLUSIVO DO STATE
 from app.models.processo import Template
-from typing import List
-from sqlmodel import select
-from datetime import datetime
+from app.states.processo import TemplatesState
 
-class TemplateListViewState(rx.State):
-    templates: List['Template'] = []
-    show_create_dialog: bool = False
-
-    def lista_templates(self):
-        with rx.session() as session:
-            dados = session.exec(
-                select(Template)
-            ).all()
-            print(dados)
-            self.templates = dados
-
-    @rx.event
-    def deletar_template(self, id):
-        print(f"deletar {id}")
-
-    @rx.event
-    def toggle_create_dialog(self, open: bool):
-        self.show_create_dialog = open
-
-    @rx.event
-    def ir_para(self, id: int):
-        url = f"/templates/{id}"
-        print(url)
-        rx.redirect("/")
-
-    @rx.event
-    def criar_template(self, form_data: dict):    
-        nome = form_data.get("name")
-        notas = form_data.get("notes")
-
-        with rx.session() as session:
-            session.add(
-                Template(
-                    nome=nome,
-                    descricao=notas,
-                    data_criacao=datetime.now(),
-                )
-            )
-            session.commit()
-        
-        print(f"Onboarding criado, dados: {nome}")
+from app.components.componentes_gerais import heading_pagina, card_headings, card_description
 
 def create_template_dialog():
     return rx.dialog.root(
@@ -64,28 +19,32 @@ def create_template_dialog():
                 "Preencha os detalhes para o novo template de processo de onboarding.",
                 class_name="text-sm text-gray-500 mb-4",
             ),
-            rx.el.form(
-                rx.el.div(
-                    rx.el.label("Nome do template", class_name="text-sm font-medium"),
+            rx.vstack(
+                rx.vstack(
+                    rx.text("Nome do template (identificador)", class_name="text-sm font-medium"),
                     rx.input(
                         name="name",
-                        placeholder="ex: Onboarding Grandes Contas",
+                        placeholder="ex: Onboarding Cliente A",
                         width='100%',
-                        size='3'
+                        size='3',
+                        on_change=TemplatesState.set_nome
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
-                    rx.el.label("Comentário", class_name="text-sm font-medium"),
+                rx.vstack(
+                    rx.text("Comentário", class_name="text-sm font-medium"),
                     rx.text_area(
                         name="notes",
                         placeholder="Comentários opcionais sobre este onboarding...",
                         width='100%',
-                        size='3'
+                        size='3',
+                        on_change=TemplatesState.set_comentario
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
+                rx.hstack(
                     rx.dialog.close(
                         rx.button(
                             "Cancelar",
@@ -96,18 +55,18 @@ def create_template_dialog():
                     ),
                     rx.button(
                         "Criar Onboarding",
-                        type="submit",
-                        size="3"
+                        size="3",
+                        on_click=TemplatesState.criar_template,
                     ),
-                    class_name="flex justify-end gap-4 mt-6",
+                    spacing='1',
+                    width='100%',
+                    justify='between'
                 ),
-                on_submit=TemplateListViewState.criar_template,
-                reset_on_submit=True,
             ),
             style={"max_width": "500px"},
         ),
-        open=TemplateListViewState.show_create_dialog,
-        on_open_change=TemplateListViewState.toggle_create_dialog,
+        open=TemplatesState.show_create_dialog,
+        on_open_change=TemplatesState.toggle_create_dialog,
     )
 
 def card_template(template: Template) -> rx.Component:
@@ -115,42 +74,62 @@ def card_template(template: Template) -> rx.Component:
     descricao = template["descricao"]
     num_etapas = 1
     num_tarefas = 1
+    data_criacao = template['data_criacao']
 
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.heading(titulo),
+                card_headings(titulo),
                 rx.hstack(
-                    rx.icon("trash-2", on_click=lambda: TemplateListViewState.deletar_template(template['id']))
+                    rx.icon("trash-2", size = 15, color=rx.color("gray", 10), on_click=lambda: TemplatesState.deletar_template(template['id']))
                 ),
                 justify="between",
                 width="100%"
             ),
-            rx.text(descricao),
+            card_description(descricao),
+            rx.hstack(
+                rx.icon("footprints", size=15, color=rx.color("accent")),
+                rx.text(f"{num_etapas} etapas", size='2'),
+                align='center',
+                width='100%'
+            ),
+            rx.hstack(
+                rx.icon("circle-check-big", size=15, color=rx.color("accent")),
+                rx.text(f"{num_tarefas} tarefas", size='2'),
+                align='center',
+                width='100%'
+            ),
             rx.divider(),
-            rx.text(f"{num_etapas} etapas"),
-            rx.text(f"{num_tarefas} tarefas"),
+            rx.text(f"Data de criação: {data_criacao}", color_scheme='gray', size='2'),
             width="100%"
         ),
         width="100%",
-        on_click=lambda: rx.redirect(f"/templates/{template['id']}")
+        on_click=lambda: rx.redirect(f"/templates/{template['id']}"),
+        class_name="shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+    )
+
+def templates_cards_box():
+    return rx.grid(
+        rx.foreach(TemplatesState.templates, card_template),
+        columns="4",
+        width = "100%",
+        padding = "1em",
+        margin_top='10px',
+        spacing='4'
     )
 
 def templates_page() -> rx.Component:
     return rx.el.main(
         rx.el.div(
             rx.el.div(
-                rx.heading("Templates", size="3"),
+                heading_pagina("Templates", "Crie e gerencie templates (modelos) para seus processos"),
                 create_template_dialog(),
                 class_name="flex justify-between items-center",
             ),
             rx.cond(
-                TemplateListViewState.templates.length() == 0,
+                TemplatesState.templates.length() == 0,
                 rx.text("Nenhum template encontrado"),
-                rx.grid(
-                    rx.foreach(TemplateListViewState.templates, card_template),
-                    columns="4"
-                )
+                templates_cards_box()
             ),
             class_name="p-4 sm:p-6 md:p-8",
         ),

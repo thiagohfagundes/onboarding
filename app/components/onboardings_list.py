@@ -1,5 +1,5 @@
 import reflex as rx
-from app.states.onboardings_list import OnboardingPageState
+from app.states.processo import OnboardingsState
 
 def status_badge(status: rx.Var[str]) -> rx.Component:
     return rx.badge(
@@ -52,62 +52,72 @@ def create_onboarding_dialog() -> rx.Component:
                 "Preencha os detalhes para o novo processo de onboarding.",
                 class_name="text-sm text-gray-500 mb-4",
             ),
-            rx.el.form(
-                rx.el.div(
-                    rx.el.label("Nome do onboarding (identificador)", class_name="text-sm font-medium"),
+            rx.vstack(
+                rx.vstack(
+                    rx.text("Nome do onboarding (identificador)", class_name="text-sm font-medium"),
                     rx.input(
                         name="name",
                         placeholder="ex: Onboarding Cliente A",
                         width='100%',
-                        size='3'
+                        size='3',
+                        on_change=OnboardingsState.set_nome
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
-                    rx.el.label("Nome do cliente", class_name="text-sm font-medium"),
+                rx.vstack(
+                    rx.text("Nome do cliente", class_name="text-sm font-medium"),
                     rx.input(
                         name="client",
                         placeholder="ex: Imobiliária ABC",
                         width='100%',
-                        size='3'
+                        size='3',
+                        on_change=OnboardingsState.set_cliente
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
-                    rx.el.label("Template", class_name="text-sm font-medium"),
+                rx.vstack(
+                    rx.text("Template", class_name="text-sm font-medium"),
                     rx.el.select(
                         rx.el.option("Começar do zero (sem template)"),
                         rx.foreach(
-                            OnboardingPageState.templates,
+                            OnboardingsState.templates,
                             lambda template: rx.el.option(template, value=template),
                         ),
                         name="template",
                         class_name="mt-1 w-full p-2 border rounded-md",
-                        placeholder="Select a template...",
+                        placeholder="Selecione um template...",
+                        on_change=OnboardingsState.set_template
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
-                    rx.el.label("Data de início", class_name="text-sm font-medium"),
+                rx.vstack(
+                    rx.text("Data de início", class_name="text-sm font-medium"),
                     rx.input(
                         name="start_date",
                         type="date",
                         width='100%',
-                        size='3'
+                        size='3',
+                        on_change=OnboardingsState.set_datainicio
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
-                    rx.el.label("Comentário", class_name="text-sm font-medium"),
+                rx.vstack(
+                    rx.text("Comentário", class_name="text-sm font-medium"),
                     rx.text_area(
                         name="notes",
                         placeholder="Comentários opcionais sobre este onboarding...",
                         width='100%',
-                        size='3'
+                        size='3',
+                        on_change=OnboardingsState.set_comentario
                     ),
-                    class_name="mb-4",
+                    spacing='1',
+                    width='100%'
                 ),
-                rx.el.div(
+                rx.hstack(
                     rx.dialog.close(
                         rx.button(
                             "Cancelar",
@@ -118,16 +128,16 @@ def create_onboarding_dialog() -> rx.Component:
                     ),
                     rx.button(
                         "Criar Onboarding",
-                        type="submit",
-                        size="3"
+                        size="3",
+                        on_click=OnboardingsState.create_onboarding,
                     ),
-                    class_name="flex justify-end gap-4 mt-6",
+                    spacing='1',
+                    width='100%',
+                    justify='between'
                 ),
-                on_submit=OnboardingPageState.create_onboarding,
-                reset_on_submit=True,
             ),
             style={"max_width": "500px"},
         ),
-        open=OnboardingPageState.show_create_dialog,
-        on_open_change=OnboardingPageState.toggle_create_dialog,
+        open=OnboardingsState.show_create_dialog,
+        on_open_change=OnboardingsState.toggle_create_dialog,
     )

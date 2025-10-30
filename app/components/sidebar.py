@@ -1,6 +1,6 @@
 import reflex as rx
 from reflex.style import set_color_mode, color_mode
-from app.states.auth_state import StateUsuario
+from app.states.auth_state import StateUsuario, AuthState
 
 def dark_mode_toggle() -> rx.Component:
     return rx.segmented_control.root(
@@ -33,14 +33,14 @@ def usuario_info(nome:str, email:str, iniciais: str) -> rx.Component:
                     spacing="0",
                     justify="center"
                 ),
-                align="center"
-            )
+                align="center",
+            ),
         ),
         rx.menu.content(
             rx.menu.item("Perfil", shortcut="⌘ E"),
             rx.menu.item("Configurações", shortcut="⌘ D"),
             rx.menu.separator(),
-            rx.menu.item("Logout", shortcut="⌘ N"),
+            rx.menu.item("Logout", shortcut="⌘ N", on_click=AuthState.sign_out),
         ),
     )
 
@@ -70,8 +70,8 @@ def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
-        sidebar_item("Onboardings", "layout-dashboard", "/#"),
-        sidebar_item("Templates", "layout-dashboard", "/#"),
+        sidebar_item("Onboardings", "layout-dashboard", "/onboardings"),
+        sidebar_item("Templates", "layout-dashboard", "/templates"),
         spacing="1",
         width="100%",
     )
