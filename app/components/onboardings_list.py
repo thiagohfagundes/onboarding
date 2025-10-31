@@ -4,7 +4,7 @@ from app.states.processo import OnboardingsState
 def status_badge(status: rx.Var[str]) -> rx.Component:
     return rx.badge(
         status,
-        class_scheme=rx.match(
+        color_scheme=rx.match(
             status,
             (
                 "Ativo",
@@ -18,14 +18,14 @@ def status_badge(status: rx.Var[str]) -> rx.Component:
                 "Atrasado",
                 "crimson",
             ),
-            "px-2 py-1 text-xs font-medium text-gray-800 bg-gray-100 rounded-full",
+            "indigo",
         ),
+        size='3'
     )
 
 def progress_bar(progresso: rx.Var[int]) -> rx.Component:
     return rx.box(
-        rx.vstack(
-            rx.text(f"{progresso} %", width='100%'),
+        rx.hstack(
             rx.progress(
                 value=progresso,
                 color_scheme=rx.cond(
@@ -33,7 +33,23 @@ def progress_bar(progresso: rx.Var[int]) -> rx.Component:
                     'grass',
                     'cyan'
                 ),
+                size="3"
             ),
+            rx.text(f"{progresso} %", width='100%'),
+            align="center"
+        ),
+        align="center"
+    )
+
+def nome_template_processo(nome_processo: str, nome_template: str | None) -> rx.Component:
+    return rx.box(
+        rx.vstack(
+            rx.text(nome_processo),
+            rx.cond(nome_template != None,
+                rx.text(nome_template, color_scheme="gray"),
+                rx.text("Nenhum template", color_scheme="gray")
+            ),
+            spacing='1'
         )
     )
 

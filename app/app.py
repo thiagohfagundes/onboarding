@@ -10,7 +10,7 @@ from app.states.processo import TemplatesState
 from app.pages.base_page import base_page, base_blank_page
 from app.pages.onboardings_details import container_onboarding_details
 from app.pages.templates_list import templates_page
-from app.pages.new_onboarding_details import detalhes_onboarding
+from app.pages.new_onboarding_details import detalhes_onboarding, OnboardingDetailsState
 from app.pages.auth_pages import sign_up, sign_in
 
 from app.pages.new_onboarding_list import onboardings_page, OnboardingListState
@@ -47,7 +47,7 @@ app.add_page(onboardings_list, route="/onboardings", on_load=OnboardingListState
 app.add_page(templates_list, route="/templates", on_load=TemplatesState.lista_templates)
 
 #DetailViews
-app.add_page(detalhes_onboarding, route='/onboardings/[id]')
+app.add_page(detalhes_onboarding, route='/onboardings/[id]', on_load=OnboardingDetailsState.captura_detalhes_onboarding)
 app.add_page(detalhes_tarefa, route='/tarefa/[id]')
 app.add_page(detalhes_onboarding, route='/templates/[id]')
 
