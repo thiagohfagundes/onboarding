@@ -21,7 +21,7 @@ class Processo(rx.Model, table=True):
     progresso: int = 0
     data_criacao: Optional[datetime] = None
     data_inicio: Optional[datetime] = None
-    etapas: List["Etapa"] = Relationship(back_populates="processo")
+    etapas: Optional[List["Etapa"]] = Relationship(back_populates="processo")
 
 
 class Etapa(rx.Model, table=True):
@@ -29,7 +29,7 @@ class Etapa(rx.Model, table=True):
     nome: Optional[str] = None
     processo_id: Optional[int] = Field(default=None, foreign_key="processo.id")
     processo: Optional[Processo] = Relationship(back_populates="etapas")
-    tarefas: List["Tarefa"] = Relationship(back_populates="etapa")
+    tarefas: Optional[List["Tarefa"]] = Relationship(back_populates="etapa")
 
 
 class Tarefa(rx.Model, table=True):

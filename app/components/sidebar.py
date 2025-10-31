@@ -22,6 +22,14 @@ def dark_mode_toggle() -> rx.Component:
         value=color_mode,
     )
 
+def logo_sidebar() -> rx.Component:
+    return rx.hstack(
+        rx.avatar(fallback="ON"),
+        rx.text("Onboardly", size="4", weight="bold"),
+        align="center",
+        margin_bottom="2em"
+    )
+
 def usuario_info(nome:str, email:str, iniciais: str) -> rx.Component:
     return rx.menu.root(
         rx.menu.trigger(
@@ -70,6 +78,7 @@ def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
+        logo_sidebar(),
         sidebar_item("Onboardings", "layout-dashboard", "/onboardings"),
         sidebar_item("Templates", "layout-dashboard", "/templates"),
         spacing="1",
