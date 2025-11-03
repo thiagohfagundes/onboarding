@@ -1,5 +1,6 @@
 import reflex as rx
 from app.components.sidebar import sidebar
+from app.components.navbar import navbar
 
 def base_page(child: rx.Component) -> rx.Component:
     return rx.fragment(
@@ -22,6 +23,7 @@ def base_auth_page(child: rx.Component) -> rx.Component:
 
 def base_blank_page(child: rx.Component) -> rx.Component:
     return rx.el.div(
+        navbar(),
         child,
-        class_name="flex flex-col items-center h-screen bg-gray-100",
+        class_name="flex flex-col items-center bg-gray-100",
     )

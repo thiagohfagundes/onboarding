@@ -3,6 +3,7 @@ from typing import List
 from app.pages.base_page import base_blank_page
 from app.models.processo import Etapa, Processo
 from sqlmodel import select
+from app.components.componentes_gerais import heading_pagina, card_headings, card_description
 
 class OnboardingDetailsState(rx.State):
     processo: Processo = None
@@ -24,14 +25,26 @@ class OnboardingDetailsState(rx.State):
             self.processo = dados
             self.etapas = dados.etapas
 
+def breadcrumbs(caminho: list = []) -> rx.Component:
+    return rx.hstack(
+        rx.foreach(
+            caminho,
+            lambda item: rx.fragment(
+                rx.link(item, href="#", color_scheme="blue"),
+                rx.cond(item != caminho[-1],
+                    rx.text(" / "),
+                    rx.text("")
+                )
+            )
+        ),
+        margin_bottom="1em",
+    )
+
 def card_detalhes_onboarding(titulo: str, descricao: str, data_inicio: str, data_fim: str) -> rx.Component:
     return rx.card(
         rx.vstack(
-            rx.hstack(
-                rx.text(titulo, size="5", weight="bold"),
-                width="100%"
-            ),
-            rx.text(descricao, size='2', color_scheme='gray'),
+            card_headings(titulo),
+            card_description(descricao),
             rx.divider(),
             rx.hstack(
                 rx.icon("calendar", size=15, color=rx.color("accent")),
@@ -51,31 +64,120 @@ def card_detalhes_onboarding(titulo: str, descricao: str, data_inicio: str, data
         class_name="shadow-md"
     )
 
-def card_etapas_onboarding(lista_etapas: list =[]) -> rx.Component:
+def item_tarefa(nome: str, responsavel: str, status_prazo: str = "Em dia", status: bool = False) -> rx.Component:
+    return rx.hstack(
+        rx.checkbox(checked=status, size='3'),
+        rx.text(nome, size='3', class_name=rx.cond(status, "line-through text-gray-500", "")),
+        rx.hstack(
+            rx.icon("circle-user", size=15, color=rx.color("gray", 7)),
+            rx.text(responsavel, size='3'),
+            align="center"
+        ),
+        rx.cond(status_prazo == "Em dia", 
+                rx.badge("Em dia", color_scheme='green', size='3'),
+                rx.badge("Atrasado", color_scheme='red', size='3')
+        ),
+        spacing ="4",
+        align="center",
+        width="100%",
+        class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg"
+    )
+
+def icone_etapa(icone: str = "check-circle") -> rx.Component:
+    return rx.box(
+        rx.icon(icone, size=20, color="white"),
+        width="40px",
+        height="40px",
+        border_radius="25px",
+        bg=rx.color("blue", 7),
+        class_name="flex items-center justify-center"
+    )
+
+def adicionar_tarefa() -> rx.Component:
+    return rx.hstack(
+        rx.input(placeholder="Nova tarefa", size="3", width="100%"),
+        rx.button(
+            rx.icon("plus", size=15, color="white"),
+            rx.text("Adicionar", size="3"),
+            color_scheme="blue",
+            variant="solid",
+            size="3",
+            radius="large",
+            class_name="cursor-pointer hover:brightness-90",
+        ),
+        spacing="2",
+        width="100%",
+        margin_top="1em"
+    )
+
+def adicionar_etapa() -> rx.Component:
+    return rx.vstack(
+        rx.heading("Adicionar nova etapa", size="4", weight="bold", color_scheme="gray"),
+        rx.hstack(
+            rx.input(placeholder="Nova etapa", size="3", width="100%"),
+            rx.button(
+                rx.icon("plus", size=15, color="white"),
+                rx.text("Adicionar Etapa", size="3"),
+                color_scheme="blue",
+                variant="solid",
+                size="3",
+                radius="large",
+                class_name="cursor-pointer hover:brightness-90",
+            ),
+            spacing="2",
+            width="100%",
+        ),
+        spacing="2",
+        width="100%",
+        padding = "1em",
+        bg = rx.color("gray", 3),
+        border_radius = "10px",
+        border=f"2px dashed {rx.color('gray',6)}"
+    )
+
+def card_etapa(nome: str) -> rx.Component:
     return rx.card(
+        rx.hstack(
+            icone_etapa(),
+            card_headings(nome),
+            align="center",
+        ),
         rx.vstack(
+            rx.text("Tarefas", size="4", weight="bold"),
+            item_tarefa("Configurar conta do cliente", "Ana Pereira", status=True),
+            item_tarefa("Enviar documentos necessários", "Bruno Souza", status_prazo="Atrasado"),
+            item_tarefa("Agendar reunião de boas-vindas", "Carla Mendes"),
+            adicionar_tarefa(),
+            width="100%",
+            spacing="2",
+            padding="1em",
+        ),
+        width="100%",
+        class_name="shadow-md"
+    )
+
+def bloco_etapas_onboarding(lista_etapas: list =[]) -> rx.Component:
+    return rx.vstack(
             rx.hstack(
                 rx.text("Etapas do Onboarding", size="5", weight="bold"),
                 justify="between",
                 width="100%"
             ),
             rx.vstack(
-                
+                card_etapa("Configuração Inicial"),
+                rx.divider(),
+                adicionar_etapa(),
+                width="100%",
+                spacing="6",
+                margin_bottom="2em"
             ),
             width="100%"
-        ),
-        width="100%",
-        class_name="shadow-md"
-    )
+        )
 
 def card_progresso_onboarding() -> rx.Component:
     return rx.card(
         rx.vstack(
-            rx.hstack(
-                rx.text("Progresso do Onboarding", size="5", weight="bold"),
-                justify="between",
-                width="100%"
-            ),
+            card_headings("Progresso do Onboarding"),
             rx.vstack(
                 rx.progress(value=70, size="3", width="100%"),
                 rx.hstack(
@@ -122,8 +224,16 @@ def card_participantes_onboarding() -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.text("Participantes", size="5", weight="bold"),
-                rx.button("Adicionar", size="3"),
+                card_headings("Participantes"),
+                rx.button(
+                    rx.icon("plus"),
+                    rx.text("Adicionar"),
+                    color_scheme="blue",
+                    variant="solid",
+                    size="2",
+                    radius="large",
+                    class_name="cursor-pointer hover:brightness-90"
+                ),
                 justify="between",
                 width="100%"
             ),
@@ -137,24 +247,106 @@ def card_participantes_onboarding() -> rx.Component:
         class_name="shadow-md"
     )
 
+def icone_proxima_tarefa() -> rx.Component:
+    return rx.box(
+        rx.icon("flag", size=20, color="white"),
+        width="40px",
+        height="40px",
+        border_radius="25px",
+        bg=rx.color("blue", 7),
+        class_name="flex items-center justify-center"
+    )
+
 def caixa_proxima_tarefa() -> rx.Component:
+    return rx.card(
+        rx.hstack(
+            icone_proxima_tarefa(),
+            rx.vstack(
+                card_headings("Próxima Tarefa"),
+                rx.vstack(
+                    rx.text("Configurar conta do cliente", size='3', weight='medium'),
+                    rx.text("Data de vencimento: 25/11/2025", size='2', color_scheme='gray'),
+                    rx.text("Responsável: Ana Pereira", size='2', color_scheme='gray'),
+                    spacing='2',
+                    width="100%"
+                ),
+                width="100%"
+            ),
+        ),
+        width="100%",
+        bg=rx.color("blue", 9),
+        class_name="shadow-md"
+    )
+
+def card_gamificacao() -> rx.Component:
+    return rx.card(
+        rx.vstack(
+            card_headings("Gamificação"),
+            card_description("Conclua tarefas e ganhe pontos para desbloquear recompensas exclusivas!"),
+            rx.hstack(
+                rx.text("Sua pontuação atual:", size='2', weight='medium'),
+                rx.text("1200 Pontos", size='2', weight='bold'),
+            ),
+            rx.hstack(
+                rx.link("Ver recompensas disponíveis", href="#", size='2'),
+                justify="end",
+                width="100%"
+            ),
+            width="100%",
+            spacing="3",
+        ),
+        width="100%",
+        class_name="shadow-md"
+    )
+
+
+def card_consultor() -> rx.Component:
+    pass
+
+def reuniao_item(descricao: str, titulo:str, data:str, hora:str) -> rx.Component:
+    return rx.vstack(
+        rx.text(descricao, size='2', weight='medium', color_scheme='gray'),
+        rx.text(titulo, size='2', weight='bold'),
+        rx.text(f"{data} às {hora}", size='2', color_scheme='gray'),
+        spacing='1',
+        width="100%",
+        bg=rx.color("gray", 3),
+        padding="1em",
+        border_radius="10px"
+    )
+
+def card_reunioes() -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.text("Próxima Tarefa", size="5", weight="bold"),
+                card_headings("Reuniões"),
+                rx.button(
+                    rx.icon("plus"),
+                    rx.text("Agendar"),
+                    color_scheme="blue",
+                    variant="solid",
+                    size="2",
+                    radius="large",
+                    class_name="cursor-pointer hover:brightness-90"
+                ),
+                justify="between",
                 width="100%"
             ),
             rx.vstack(
-                rx.text("Configurar conta do cliente", size='3', weight='medium'),
-                rx.text("Data de vencimento: 25/11/2025", size='2', color_scheme='gray'),
-                rx.text("Responsável: Ana Pereira", size='2', color_scheme='gray'),
-                spacing='2',
+                reuniao_item("Última reunião", "Alinhamento inicial do projeto", "22/10/2025", "10:00"),
+                reuniao_item("Próxima reunião", "Verificação do progresso", "29/10/2025", "14:00"),
+                spacing="2",
+                width="100%",
+            ),
+            rx.hstack(
+                rx.link("Ver todas as reuniões", href="#", size="2", color_scheme='blue'),
+                justify="end",
                 width="100%"
             ),
-            width="100%"
-        ),
+            spacing="3",
+            width="100%",
+            ),  
         width="100%",
-        bg=rx.color("blue", 3),
         class_name="shadow-md"
     )
 
@@ -167,37 +359,41 @@ def header_onboarding_details() -> rx.Component:
         padding="1em",
         margin_top="1em",
         border_radius="10px",
-        
         bg=rx.color("blue"),
     )
 
 def bloco_esquedo() -> rx.Component:
-    return rx.scroll_area(
-        rx.vstack(
+    return rx.vstack(
             card_detalhes_onboarding(
                 "Onboarding de Cliente X",
                 "Este é o onboarding do Cliente X, que inclui todas as etapas necessárias para garantir uma integração bem-sucedida.",
                 "22/10/2025",
                 "22/12/2025"
             ),
-            card_progresso_onboarding(),
             card_participantes_onboarding(),
-            spacing="4",
+            card_reunioes(),
+            card_gamificacao(),
+            spacing="6",
             width="100%"
-        ),
-        width="100%",
-    )
+        )
 
-def bloco_direito(child: rx.Component = None, *args, **kwargs) -> rx.Component:
-    return rx.scroll_area(
-        rx.vstack(
+def bloco_direito() -> rx.Component:
+    return rx.vstack(
+            rx.vstack(
+                breadcrumbs(["Home", "Onboardings", "Detalhes do Onboarding"]),
+                rx.heading("Plano de onboarding", size="6", weight="bold"),
+                rx.text("Seja bem-vindo ao seu plano de onboarding! Aqui você encontrará todas as etapas necessárias para garantir uma integração suave e bem-sucedida.", size='2', color_scheme='gray'),
+                width="100%",
+                spacing="1",
+                margin_top="1em"
+            ),
             caixa_proxima_tarefa(),
-            card_etapas_onboarding(OnboardingDetailsState.etapas),
-            spacing="4",
-            width="100%"
-        ),
-        width="100%"
-    )
+            card_progresso_onboarding(),
+            bloco_etapas_onboarding(OnboardingDetailsState.etapas),
+            spacing="6",
+            width="100%",
+            padding_left="1em"
+        )
 
 def onboarding_screen() -> rx.Component:
     return rx.vstack(
@@ -206,12 +402,16 @@ def onboarding_screen() -> rx.Component:
             bloco_esquedo(),
             bloco_direito(),
             width="100%",
-            columns="1fr 2fr",
+            columns="1fr 3fr",
             spacing="4",
         ),
         margin_x='1em',
+        width="80%",
+        align="center",
     )
 
 
 def detalhes_onboarding():
-    return onboarding_screen()
+    return base_blank_page(
+        onboarding_screen()
+    )
