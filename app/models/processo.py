@@ -22,6 +22,7 @@ class Processo(rx.Model, table=True):
     data_criacao: Optional[datetime] = None
     data_inicio: Optional[datetime] = None
     etapas: Optional[List["Etapa"]] = Relationship(back_populates="processo")
+    tarefas: Optional[List["Tarefa"]] = Relationship(back_populates="processo")
 
 
 class Etapa(rx.Model, table=True):
@@ -34,6 +35,7 @@ class Etapa(rx.Model, table=True):
 
 class Tarefa(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    concluido: bool = False
     nome: Optional[str] = None
     responsavel: Optional[str] = None
     data_criacao: Optional[datetime] = None
@@ -43,3 +45,5 @@ class Tarefa(rx.Model, table=True):
 
     etapa_id: Optional[int] = Field(default=None, foreign_key="etapa.id")
     etapa: Optional[Etapa] = Relationship(back_populates="tarefas")
+    processo_id: Optional[int] = Field(default=None, foreign_key="processo.id")
+    processo: Optional[Processo] = Relationship(back_populates="tarefas")
