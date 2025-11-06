@@ -12,3 +12,6 @@ def card_headings(titulo: str):
 
 def card_description(subtitulo: str):
     return rx.text(subtitulo, size='2', color_scheme='gray')
+
+def forms_label(texto: str):
+    return rx.text(texto, class_name="text-sm font-medium leading-none")

@@ -3,7 +3,7 @@ from typing import List
 from app.pages.base_page import base_blank_page
 from app.models.processo import Etapa, Processo, Tarefa
 from sqlmodel import select
-from app.components.componentes_gerais import heading_pagina, card_headings, card_description
+from app.components.componentes_gerais import heading_pagina, card_headings, card_description, forms_label
 from functools import partial
 
 class OnboardingDetailsState(rx.State):
@@ -144,6 +144,78 @@ def card_detalhes_onboarding(titulo: str, descricao: str, data_inicio: str, data
         class_name="shadow-md"
     )
 
+def detalhes_tarefa() -> rx.Component:
+    return rx.dialog.content(
+        rx.dialog.title("Detalhes da tarefa"),
+        rx.vstack(
+            rx.hstack(
+                rx.hstack(
+                    rx.text("Concluída")
+                ),
+                rx.switch(),
+                justify="between",
+                width='100%',
+                padding='1em',
+            ),
+            forms_label("Nome da tarefa"),
+            rx.input(width='100%', size="3"),
+            rx.hstack(
+                rx.vstack(
+                    forms_label("Responsável"),
+                    rx.input(width='100%', size="3"),
+                    width='100%'
+                ),
+                rx.vstack(
+                    forms_label("Prazo"),
+                    rx.input(width='100%', type="date", size="3"),
+                    width='100%'
+                ),
+                width='100%'
+            ),
+            rx.hstack(
+                rx.switch(),
+                forms_label("Tarefa externa (permitir visualização do cliente)"),
+                width='100%',
+                align="center"
+            ),
+            rx.vstack(
+                rx.data_list.root(
+                    rx.data_list.item(
+                        rx.data_list.label("Data de criação"),
+                        rx.data_list.value("21-10-2025"),
+                        align="center",
+                        width="100%"
+                    ),
+                    rx.data_list.item(
+                        rx.data_list.label("Data da última modif."),
+                        rx.data_list.value("21-10-2025"),
+                        align="center",
+                        width="100%"
+                    ),
+                    rx.data_list.item(
+                        rx.data_list.label("Data de conclusão"),
+                        rx.data_list.value("-"),
+                        align="center",
+                        width="100%"
+                    ),
+                ),
+                width="100%",
+                padding="1em"
+            ),
+            rx.hstack(
+                rx.text("Excluir"),
+                rx.hstack(
+                    rx.button("Cancelar", size="3"),
+                    rx.button("Salvar alterações", size="3")
+                ),
+                justify='between',
+                align="center",
+                width='100%'
+            )
+
+        )
+    )
+
 def item_tarefa(tarefa: Tarefa) -> rx.Component:
     nome = tarefa.nome
     responsavel = rx.cond(
@@ -156,23 +228,29 @@ def item_tarefa(tarefa: Tarefa) -> rx.Component:
     status_prazo = "Em dia"
 
     return rx.hstack(
-        rx.hstack(
-            rx.checkbox(checked=status, size='3'),
-            rx.text(nome, size='3', class_name=rx.cond(status, "line-through text-gray-500", "")),
-            rx.hstack(
-                rx.icon("circle-user", size=15, color=rx.color("gray", 7)),
-                rx.text(responsavel, size='3'),
-                align="center"
+        rx.dialog.root(
+            rx.dialog.trigger(
+                rx.hstack(
+                    rx.checkbox(checked=status, size='3'),
+                    rx.text(nome, size='3', weight="medium", class_name=rx.cond(status, "line-through text-gray-500", "")),
+                    rx.hstack(
+                        rx.icon("circle-user", size=15, color=rx.color("gray", 7)),
+                        rx.text(responsavel, size='3'),
+                        align="center"
+                    ),
+                    rx.cond(status_prazo == "Em dia", 
+                        rx.badge("Em dia", color_scheme='green', size='3'),
+                        rx.badge("Atrasado", color_scheme='red', size='3')
+                    ),
+                    spacing ="4",
+                    align="center",
+                    width="100%",
+                    class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg",
+                    on_click=lambda *_: OnboardingDetailsState.detalhes_tarefa(id)
+                ),
+                width="100%"
             ),
-            rx.cond(status_prazo == "Em dia", 
-                    rx.badge("Em dia", color_scheme='green', size='3'),
-                    rx.badge("Atrasado", color_scheme='red', size='3')
-            ),
-            spacing ="4",
-            align="center",
-            width="100%",
-            class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg",
-            on_click=lambda *_: OnboardingDetailsState.detalhes_tarefa(id)
+            detalhes_tarefa()
         ),
         rx.box(
             rx.icon("trash-2", size=15),
