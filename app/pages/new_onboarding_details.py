@@ -4,11 +4,13 @@ from app.pages.base_page import base_blank_page
 from app.models.processo import Etapa, Processo, Tarefa
 from sqlmodel import select
 from app.components.componentes_gerais import heading_pagina, card_headings, card_description
+from functools import partial
 
 class OnboardingDetailsState(rx.State):
     processo: Processo = None
     etapas: List[Etapa] = []
     loading_tarefa: bool = False
+    id_tarefa_selecionada: int
 
     @rx.var(cache=True)
     def onboarding_id(self) -> str:
@@ -90,8 +92,16 @@ class OnboardingDetailsState(rx.State):
             self.loading_tarefa = False
 
     @rx.event
-    def excluir_tarefa(tarefa: Tarefa):
-        print(f"Tarefa {tarefa} excluída")
+    def excluir_tarefa(self, id: int):
+        print(f"Tarefa {id} excluída")
+
+    @rx.event
+    def detalhes_tarefa(self, id: int):
+        print(f"Detalhes da tarefa {id}")
+
+    @rx.event
+    def finalizar_tarefa(self, id:int):
+        print(f"Tarefa {id} finalizada")
 
         
 
@@ -141,7 +151,7 @@ def item_tarefa(tarefa: Tarefa) -> rx.Component:
         tarefa.responsavel,
         "Sem responsável atribuído"
     )
-    id = tarefa.id
+    id = tarefa['id']
     status = tarefa.concluido
     status_prazo = "Em dia"
 
@@ -161,12 +171,13 @@ def item_tarefa(tarefa: Tarefa) -> rx.Component:
             spacing ="4",
             align="center",
             width="100%",
-            class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg"
+            class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg",
+            on_click=lambda *_: OnboardingDetailsState.detalhes_tarefa(id)
         ),
         rx.box(
             rx.icon("trash-2", size=15),
             class_name="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 transition-all duration-200 cursor-pointer",
-            on_click=lambda tarefa: OnboardingDetailsState.excluir_tarefa(tarefa) # passando sempre o mesmo id
+            on_click=lambda *_: OnboardingDetailsState.excluir_tarefa(id) # passando sempre o mesmo id
         ),
         width="100%"
     )
