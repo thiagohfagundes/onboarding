@@ -150,19 +150,30 @@ def detalhes_tarefa() -> rx.Component:
         rx.vstack(
             rx.hstack(
                 rx.hstack(
-                    rx.text("Concluída")
+                    rx.box(
+                        rx.icon("check", size=15, color="white"),
+                        width="30px",
+                        height="30px",
+                        border_radius="15px",
+                        bg=rx.color("green", 7),
+                        class_name="flex items-center justify-center"
+                    ),
+                    rx.text("Concluída?", weight="medium"),
+                    align="center"
                 ),
-                rx.switch(),
+                rx.switch(color_scheme="teal"),
                 justify="between",
                 width='100%',
                 padding='1em',
+                align="center",
+                class_name="rounded-xl border border-gray-200"
             ),
             forms_label("Nome da tarefa"),
             rx.input(width='100%', size="3"),
             rx.hstack(
                 rx.vstack(
                     forms_label("Responsável"),
-                    rx.input(width='100%', size="3"),
+                    rx.select(items=["Pessoa"],width='100%', size="3"),
                     width='100%'
                 ),
                 rx.vstack(
@@ -200,7 +211,8 @@ def detalhes_tarefa() -> rx.Component:
                     ),
                 ),
                 width="100%",
-                padding="1em"
+                padding="1em",
+                class_name="rounded-xl border border-gray-200"
             ),
             rx.hstack(
                 rx.text("Excluir"),
