@@ -11,6 +11,7 @@ class OnboardingDetailsState(rx.State):
     etapas: List[Etapa] = []
     loading_tarefa: bool = False
     id_tarefa_selecionada: int
+    loading_dados: bool = True
 
     @rx.var(cache=True)
     def onboarding_id(self) -> str:
@@ -35,6 +36,7 @@ class OnboardingDetailsState(rx.State):
                     e.tarefas = []
 
             self.etapas = etapas_list
+            self.loading_dados = False
             print("Etapas carregadas:", [(e.id, e.nome, len(e.tarefas)) for e in self.etapas])
 
     def cria_etapa(self, form_data: dict): # POST etapa
@@ -147,6 +149,7 @@ def card_detalhes_onboarding(titulo: str, descricao: str, data_inicio: str, data
 def detalhes_tarefa() -> rx.Component:
     return rx.dialog.content(
         rx.dialog.title("Detalhes da tarefa"),
+        rx.divider(margin_bottom="1em"),
         rx.vstack(
             rx.hstack(
                 rx.hstack(
@@ -380,12 +383,21 @@ def bloco_etapas_onboarding(lista_etapas: List['Etapa'] = []) -> rx.Component:
             ),
             rx.vstack(
                 rx.cond(
-                    OnboardingDetailsState.etapas.length() > 0,
-                    rx.foreach(
-                        OnboardingDetailsState.etapas,
-                        card_etapa
+                    OnboardingDetailsState.loading_dados,
+                    rx.hstack(
+                        rx.spinner(),
+                        width="100%",
+                        padding='1em',
+                        align="center"
                     ),
-                    rx.text("Nenhuma etapa criada. Crie sua primeira etapa")
+                    rx.cond(
+                        OnboardingDetailsState.etapas.length() > 0,
+                        rx.foreach(
+                            OnboardingDetailsState.etapas,
+                            card_etapa
+                        ),
+                        rx.text("Nenhuma etapa criada. Crie sua primeira etapa")
+                    ),
                 ),
                 rx.divider(),
                 adicionar_etapa(),

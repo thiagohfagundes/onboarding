@@ -8,6 +8,7 @@ from app.components.onboardings_list import create_onboarding_dialog, status_bad
 
 class OnboardingListState(rx.State):
     processos: List['Processo'] = []
+    loading_processos: bool = True
 
     def lista_processos(self):
         with rx.session() as session:
@@ -16,6 +17,7 @@ class OnboardingListState(rx.State):
             ).all()
             print(dados)
             self.processos = dados
+            self.loading_processos = False
 
 def onboardings_table() -> rx.Component:
     return rx.table.root(
@@ -100,16 +102,23 @@ def onboardings_page() -> rx.Component:
             rx.el.div(
                 onboardings_table(),
                 rx.cond(
-                    OnboardingListState.processos.length() == 0,
+                    OnboardingListState.loading_processos,
                     rx.el.div(
-                        rx.el.p(
-                            "Nenhum onboarding encontrado.",
-                            class_name="text-center py-10",
-                        ),
-                        class_name= "rounded-2xl border border-gray-100 shadow-sm mt-6",
+                        rx.spinner(),
+                        class_name= "flex justify-center items-center h-64 rounded-2xl border border-gray-100 shadow-sm mt-6",
                     ),
-                    None,
-                ),
+                    rx.cond(
+                        OnboardingListState.processos.length() == 0,
+                        rx.el.div(
+                            rx.el.p(
+                                "Nenhum onboarding encontrado.",
+                                class_name="text-center py-10",
+                            ),
+                            class_name= "rounded-2xl border border-gray-100 shadow-sm mt-6",
+                        ),
+                        None,
+                    ),
+                ), 
                 class_name="mt-6 rounded-2xl border border-gray-100 shadow-sm overflow-hidden",
             ),
             class_name="p-4 sm:p-6 md:p-8",
