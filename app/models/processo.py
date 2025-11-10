@@ -47,3 +47,10 @@ class Tarefa(rx.Model, table=True):
     etapa: Optional[Etapa] = Relationship(back_populates="tarefas")
     processo_id: Optional[int] = Field(default=None, foreign_key="processo.id")
     processo: Optional[Processo] = Relationship(back_populates="tarefas")
+
+class Reuniao(rx.Model, table=True):
+    titulo: str
+
+class Participante(rx.Model, table=True):
+    nome: str
+    email: str

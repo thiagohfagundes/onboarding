@@ -5,6 +5,9 @@ from datetime import datetime
 from sqlmodel import select
 
 class OnboardingsState(rx.State):
+    processos: List['Processo'] = []
+    loading_processos: bool = True
+
     show_create_dialog: bool = False
     nome: str = ""
     cliente: str = ""
@@ -17,6 +20,15 @@ class OnboardingsState(rx.State):
         "Template 2",
         "Template 3"
     ]
+
+    def lista_processos(self):
+        with rx.session() as session:
+            dados = session.exec(
+                select(Processo)
+            ).all()
+            print(dados)
+            self.processos = dados
+            self.loading_processos = False
 
     @rx.event
     def set_nome(self, nome: str):
@@ -39,8 +51,11 @@ class OnboardingsState(rx.State):
         self.comentario = comentario
 
     @rx.event
-    def create_onboarding(self):
+    def toggle_create_dialog(self, open: bool):
+        self.show_create_dialog = open
 
+    @rx.event
+    def create_onboarding(self):
         #criar o onboarding
         with rx.session() as session:
             session.add(
@@ -54,12 +69,32 @@ class OnboardingsState(rx.State):
             )
             session.commit()
             self.show_create_dialog = False
-            yield rx.toast("Onboarding criado, atualize a tela.", duration=4000)
-        rx.redirect("/")
+
+            try:
+                self.lista_processos()
+                yield rx.toast("Onboarding criado", duration=4000)
+            except Exception as e:
+                print("Erro ao recarregar detalhes após criar tarefa:", e)
 
     @rx.event
-    def toggle_create_dialog(self, open: bool):
-        self.show_create_dialog = open
+    def deletar_onboarding(self):
+        try:
+            with rx.session() as session:
+                o = session.get(Processo, id)
+                if not o:
+                    print("excluir_tarefa: tarefa não encontrada no DB:", id)
+                else:
+                    session.delete(o)
+                    session.commit()
+                    yield rx.toast("Tarefa excluída com sucesso", duration=4000)
+
+                    try:
+                        self.lista_processos()
+                    except Exception as e:
+                        print("Erro ao recarregar detalhes após excluir processo:", e)
+        except Exception as e:
+            print("excluir_tarefa: erro ao deletar no DB:", e)
+
 
 
 class TemplatesState(rx.State):

@@ -5,13 +5,20 @@ from app.models.processo import Etapa, Processo, Tarefa
 from sqlmodel import select
 from app.components.componentes_gerais import heading_pagina, card_headings, card_description, forms_label
 from functools import partial
+from datetime import datetime
 
 class OnboardingDetailsState(rx.State):
     processo: Processo = None
     etapas: List[Etapa] = []
     loading_tarefa: bool = False
-    id_tarefa_selecionada: int
+    tarefa_selecionada: Tarefa
     loading_dados: bool = True
+
+    total_tarefas: int
+    tarefas_concluidas: int
+    proxima_tarefa: Tarefa
+    proxima_tarefa_meta: dict[str, int | None]
+    progresso_calc: int
 
     @rx.var(cache=True)
     def onboarding_id(self) -> str:
@@ -35,9 +42,54 @@ class OnboardingDetailsState(rx.State):
                 except Exception:
                     e.tarefas = []
 
+            # totais e concluídos
+            total = 0
+            concluidas = 0
+            for e in etapas_list:
+                total += len(e.tarefas)
+                concluidas += sum(1 for t in e.tarefas if bool(getattr(t, "concluido", False)))
+
+            # procurar a próxima tarefa não concluída (varre etapas na ordem)
+            proxima = None
+            proxima_meta = None
+            for i, e in enumerate(etapas_list):
+                # ordena tarefas: por prazo (menor primeiro), depois data_criacao, depois id
+                tarefas_ordenadas = sorted(
+                    e.tarefas,
+                    key=lambda t: (
+                        t.prazo if getattr(t, "prazo", None) is not None else datetime.max,
+                        t.data_criacao if getattr(t, "data_criacao", None) is not None else datetime.max,
+                        t.id if getattr(t, "id", None) is not None else 0
+                    )
+                )
+
+                for j, t in enumerate(tarefas_ordenadas):
+                    if not bool(getattr(t, "concluido", False)):
+                        proxima = t
+                        proxima_meta = {
+                            "etapa_index": i,
+                            "tarefa_index": j,
+                            "etapa_id": getattr(e, "id", None),
+                        }
+                        break
+                if proxima is not None:
+                    break
+
+            # atribuir estados ao self (para usar no front)
             self.etapas = etapas_list
+            self.total_tarefas = total
+            self.tarefas_concluidas = concluidas
+            self.proxima_tarefa = proxima
+            self.proxima_tarefa_meta = proxima_meta
+
+            # progresso calculado (0-100) — evita divisão por zero
+            if total > 0:
+                self.progresso_calc = int((concluidas / total) * 100)
+            else:
+                self.progresso_calc = 0
+
+            # manter compatibilidade com flag anterior
             self.loading_dados = False
-            print("Etapas carregadas:", [(e.id, e.nome, len(e.tarefas)) for e in self.etapas])
 
     def cria_etapa(self, form_data: dict): # POST etapa
         with rx.session() as session:
@@ -48,7 +100,12 @@ class OnboardingDetailsState(rx.State):
             session.add(nova_etapa)
             session.commit()
             session.refresh(nova_etapa)
-            print(f"Etapa criada: {nova_etapa}")
+            yield rx.toast("Etapa criada com sucesso", duration=4000)
+
+            try:
+                self.captura_detalhes_onboarding()
+            except Exception as e:
+                print("Erro ao recarregar detalhes após criar etapa:", e)
 
     def cria_tarefa(self, form_data: dict):  # POST tarefa
         self.loading_tarefa = True # Não está funcionando
@@ -78,7 +135,7 @@ class OnboardingDetailsState(rx.State):
                 session.add(nova_tarefa)
                 session.commit()
                 session.refresh(nova_tarefa)
-                print(f"Tarefa criada: {nova_tarefa}")
+                yield rx.toast("Tarefa criada com sucesso", duration=4000)
 
             # Recarrega dados do DB para sincronizar o state (faz a query pesada aqui)
             # (mantenha isso dentro do try para garantir que loading só pare depois)
@@ -95,16 +152,51 @@ class OnboardingDetailsState(rx.State):
 
     @rx.event
     def excluir_tarefa(self, id: int):
-        print(f"Tarefa {id} excluída")
+        try:
+            with rx.session() as session:
+                t = session.get(Tarefa, id)
+                if not t:
+                    print("excluir_tarefa: tarefa não encontrada no DB:", id)
+                else:
+                    session.delete(t)
+                    session.commit()
+                    yield rx.toast("Tarefa excluída com sucesso", duration=4000)
+
+                    try:
+                        self.captura_detalhes_onboarding()
+                    except Exception as e:
+                        print("Erro ao recarregar detalhes após deletar tarefa:", e)
+        except Exception as e:
+            print("excluir_tarefa: erro ao deletar no DB:", e)
 
     @rx.event
-    def detalhes_tarefa(self, id: int):
-        print(f"Detalhes da tarefa {id}")
+    def detalhes_tarefa(self, tarefa: Tarefa):
+        self.tarefa_selecionada = tarefa
 
     @rx.event
     def finalizar_tarefa(self, id:int):
-        print(f"Tarefa {id} finalizada")
+        try:
+            with rx.session() as session:
+                t = session.get(Tarefa, id)
+                if not t:
+                    print("finalizar_tarefa: tarefa não encontrada no DB:", id)
+                else:
+                    t.concluido = True
+                    t.data_conclusao = datetime.now()
+                    t.data_ult_modif = datetime.now()
+                    session.add(t)
+                    session.commit()
+                    session.refresh(t)
+                    yield rx.toast("Tarefa concluída", duration=4000)
 
+                    try:
+                        self.captura_detalhes_onboarding()
+                    except Exception as e:
+                        print("Erro ao recarregar detalhes após criar tarefa:", e)
+        except Exception as e:
+            print("finalizar_tarefa: erro ao atualizar no DB:", e)
+
+        
         
 
 def breadcrumbs(caminho: list = []) -> rx.Component:
@@ -164,7 +256,7 @@ def detalhes_tarefa() -> rx.Component:
                     rx.text("Concluída?", weight="medium"),
                     align="center"
                 ),
-                rx.switch(color_scheme="teal"),
+                rx.switch(OnboardingDetailsState.tarefa_selecionada['concluido'],color_scheme="teal"),
                 justify="between",
                 width='100%',
                 padding='1em',
@@ -172,11 +264,11 @@ def detalhes_tarefa() -> rx.Component:
                 class_name="rounded-xl border border-gray-200"
             ),
             forms_label("Nome da tarefa"),
-            rx.input(width='100%', size="3"),
+            rx.input(value=OnboardingDetailsState.tarefa_selecionada['nome'], width='100%', size="3"),
             rx.hstack(
                 rx.vstack(
                     forms_label("Responsável"),
-                    rx.select(items=["Pessoa"],width='100%', size="3"),
+                    rx.select(value=OnboardingDetailsState.tarefa_selecionada['responsavel'], items=["Pessoa"],width='100%', size="3"),
                     width='100%'
                 ),
                 rx.vstack(
@@ -243,25 +335,30 @@ def item_tarefa(tarefa: Tarefa) -> rx.Component:
     status_prazo = "Em dia"
 
     return rx.hstack(
+        rx.checkbox(
+            checked=status, 
+            size='3', 
+            on_click=lambda *_: OnboardingDetailsState.finalizar_tarefa(id),
+            class_name="cursor-pointer"
+        ),
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.hstack(
-                    rx.checkbox(checked=status, size='3'),
-                    rx.text(nome, size='3', weight="medium", class_name=rx.cond(status, "line-through text-gray-500", "")),
-                    rx.hstack(
-                        rx.icon("circle-user", size=15, color=rx.color("gray", 7)),
-                        rx.text(responsavel, size='3'),
-                        align="center"
-                    ),
-                    rx.cond(status_prazo == "Em dia", 
-                        rx.badge("Em dia", color_scheme='green', size='3'),
-                        rx.badge("Atrasado", color_scheme='red', size='3')
-                    ),
-                    spacing ="4",
-                    align="center",
-                    width="100%",
-                    class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg",
-                    on_click=lambda *_: OnboardingDetailsState.detalhes_tarefa(id)
+                        rx.text(nome, size='3', weight="medium", class_name=rx.cond(status, "line-through text-gray-500", "")),
+                        rx.hstack(
+                            rx.icon("circle-user", size=15, color=rx.color("gray", 7)),
+                            rx.text(responsavel, size='3'),
+                            align="center"
+                        ),
+                        rx.cond(status_prazo == "Em dia", 
+                            rx.badge("Em dia", color_scheme='green', size='3'),
+                            rx.badge("Atrasado", color_scheme='red', size='3')
+                        ),
+                        spacing ="4",
+                        align="center",
+                        width="100%",
+                        class_name="hover:bg-gray-100 cursor-pointer p-2 rounded-lg",
+                        on_click=lambda *_: OnboardingDetailsState.detalhes_tarefa(tarefa)
                 ),
                 width="100%"
             ),
@@ -272,7 +369,8 @@ def item_tarefa(tarefa: Tarefa) -> rx.Component:
             class_name="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 transition-all duration-200 cursor-pointer",
             on_click=lambda *_: OnboardingDetailsState.excluir_tarefa(id) # passando sempre o mesmo id
         ),
-        width="100%"
+        width="100%",
+        align="center"
     )
 
 def icone_etapa(icone: str = "check-circle") -> rx.Component:
@@ -413,10 +511,10 @@ def card_progresso_onboarding() -> rx.Component:
         rx.vstack(
             card_headings("Progresso do Onboarding"),
             rx.vstack(
-                rx.progress(value=70, size="3", width="100%"),
+                rx.progress(value=OnboardingDetailsState.progresso_calc, size="3", width="100%"),
                 rx.hstack(
-                    rx.text("70 % concluído", size='2'),
-                    rx.text("7 de 10 tarefas concluídas", size='2'),
+                    rx.text(f"{OnboardingDetailsState.progresso_calc} % concluído", size='2'),
+                    rx.text(f"{OnboardingDetailsState.tarefas_concluidas} de {OnboardingDetailsState.total_tarefas} tarefas concluídas", size='2'),
                     justify="between",
                     width="100%"
                 ),
@@ -478,7 +576,7 @@ def card_participantes_onboarding() -> rx.Component:
             width="100%"
         ),
         width="100%",
-        class_name="shadow-md"
+        class_name = "shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
     )
 
 def icone_proxima_tarefa() -> rx.Component:
@@ -491,26 +589,32 @@ def icone_proxima_tarefa() -> rx.Component:
         class_name="flex items-center justify-center"
     )
 
-def caixa_proxima_tarefa() -> rx.Component:
-    return rx.card(
-        rx.hstack(
-            icone_proxima_tarefa(),
-            rx.vstack(
-                card_headings("Próxima Tarefa"),
-                rx.vstack(
-                    rx.text("Configurar conta do cliente", size='3', weight='medium'),
-                    rx.text("Data de vencimento: 25/11/2025", size='2', color_scheme='gray'),
-                    rx.text("Responsável: Ana Pereira", size='2', color_scheme='gray'),
-                    spacing='2',
-                    width="100%"
+def caixa_proxima_tarefa(tarefa: Tarefa) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.card(
+                rx.hstack(
+                    icone_proxima_tarefa(),
+                    rx.vstack(
+                        card_headings("Próxima Tarefa"),
+                        rx.vstack(
+                            rx.text(tarefa.nome, size='3', weight='medium'),
+                            rx.text("Data de vencimento: 25/11/2025", size='2', color_scheme='gray'),
+                            rx.text("Responsável: Ana Pereira", size='2', color_scheme='gray'),
+                            spacing='2',
+                            width="100%"
+                        ),
+                        width="100%"
+                    ),
                 ),
-                width="100%"
-            ),
+                width="100%",
+                bg=rx.color("blue", 9),
+                class_name = "shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+            )
         ),
-        width="100%",
-        bg=rx.color("blue", 9),
-        class_name="shadow-md"
+        detalhes_tarefa()
     )
+        
 
 def card_gamificacao() -> rx.Component:
     return rx.card(
@@ -530,7 +634,7 @@ def card_gamificacao() -> rx.Component:
             spacing="3",
         ),
         width="100%",
-        class_name="shadow-md"
+        class_name = "shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
     )
 
 
@@ -581,7 +685,7 @@ def card_reunioes() -> rx.Component:
             width="100%",
             ),  
         width="100%",
-        class_name="shadow-md"
+        class_name = "shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
     )
 
 def header_onboarding_details() -> rx.Component:
@@ -623,7 +727,7 @@ def bloco_direito() -> rx.Component:
                 spacing="1",
                 margin_top="1em"
             ),
-            caixa_proxima_tarefa(),
+            caixa_proxima_tarefa(OnboardingDetailsState.proxima_tarefa),
             card_progresso_onboarding(),
             bloco_etapas_onboarding(OnboardingDetailsState.etapas),
             spacing="6",

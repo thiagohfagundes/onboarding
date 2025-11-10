@@ -15,9 +15,10 @@ class OnboardingListState(rx.State):
             dados = session.exec(
                 select(Processo)
             ).all()
-            print(dados)
             self.processos = dados
             self.loading_processos = False
+
+            
 
 def onboardings_table() -> rx.Component:
     return rx.table.root(
