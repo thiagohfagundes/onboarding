@@ -6,13 +6,15 @@ from sqlmodel import select
 from app.components.componentes_gerais import heading_pagina, card_headings, card_description, forms_label
 from functools import partial
 from datetime import datetime
+from app.utils.integrador import Integracao
 
 class OnboardingDetailsState(rx.State):
     processo: Processo = None
     etapas: List[Etapa] = []
     loading_tarefa: bool = False
-    tarefa_selecionada: Tarefa
+    tarefa_selecionada: Tarefa | None = None
     loading_dados: bool = True
+    id_onboarding: str = "34722100533"
 
     total_tarefas: int
     tarefas_concluidas: int
@@ -25,6 +27,11 @@ class OnboardingDetailsState(rx.State):
         return self.router.page.params.get("id", "")
     
     def captura_detalhes_onboarding(self): # GET onboarding
+        if self.id_onboarding != "":
+            hubspot = Integracao()
+            dados_ticket = hubspot.capturar_detalhes_ticket(self.id_onboarding)
+            print(dados_ticket)
+
         with rx.session() as session:
             dados = session.exec(
                 Processo.select().where(
@@ -319,7 +326,6 @@ def detalhes_tarefa() -> rx.Component:
                 align="center",
                 width='100%'
             )
-
         )
     )
 

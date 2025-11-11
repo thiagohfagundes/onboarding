@@ -17,7 +17,6 @@ class OnboardingListState(rx.State):
             ).all()
             self.processos = dados
             self.loading_processos = False
-
             
 
 def onboardings_table() -> rx.Component:
