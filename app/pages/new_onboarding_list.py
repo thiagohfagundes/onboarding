@@ -11,7 +11,6 @@ from app.utils.integrador import Integracao
 class OnboardingListState(rx.State):
     processos: List['Processo'] = []
     loading_processos: bool = True
-    
 
     def lista_processos(self):
         with rx.session() as session:

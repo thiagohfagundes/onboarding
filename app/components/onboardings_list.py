@@ -4,7 +4,7 @@ from app.utils.integrador import Integracao
 
 class StateDialog(rx.State):
     onboardings: list = ["Aguarde carregamento..."]
-    id_pipeline: str = '27860857'
+    id_pipeline: str = '27860857',
 
     rx.event
     def lista_onboardings(self):

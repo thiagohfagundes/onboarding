@@ -14,7 +14,12 @@ class OnboardingDetailsState(rx.State):
     loading_tarefa: bool = False
     tarefa_selecionada: Tarefa | None = None
     loading_dados: bool = True
+    
+    # Hubspot
     id_onboarding: str = "34722100533"
+    dados_ticket: dict = {}
+    dados_reunioes: list[dict] = []
+    dados_participantes: list[dict] = []
 
     total_tarefas: int
     tarefas_concluidas: int
@@ -29,8 +34,11 @@ class OnboardingDetailsState(rx.State):
     def captura_detalhes_onboarding(self): # GET onboarding
         if self.id_onboarding != "":
             hubspot = Integracao()
-            dados_ticket = hubspot.capturar_detalhes_ticket(self.id_onboarding)
-
+            self.dados_ticket = hubspot.capturar_detalhes_ticket(self.id_onboarding)
+            self.dados_reunioes = hubspot.capturar_reunioes(self.id_onboarding)
+            self.dados_participantes = hubspot.capturar_contatos_associados(self.id_onboarding)
+            print(self.dados_reunioes)
+            
         with rx.session() as session:
             dados = session.exec(
                 Processo.select().where(
@@ -557,6 +565,31 @@ def participantes_item(nome: str, email: str, iniciais: str, empresa: str, cargo
         padding_x='1em',
     )
 
+def participantes_novo(participante: dict) -> rx.Component:
+    nome = f"{participante.get("firstname", "Sem nome")} {participante.get("lastname", "")}"
+    email = participante.get("email", "Sem e-mail cadastrado")
+    cargo = participante.get("jobtitle", "Sem cargo cadastrado")
+
+    return rx.hstack(
+        rx.hstack(
+            rx.vstack(
+                rx.text(nome, size='3', weight='bold'),
+                rx.text(email, size='2', color_scheme='gray'),
+                rx.text(cargo, size='2', color_scheme='gray'),
+                spacing='1'
+            ),
+            spacing='3',
+            align='center',
+        ),
+        rx.icon("pencil", size=20, color=rx.color("gray", 7)),
+        width='100%',
+        align='center',
+        justify='between',
+        spacing='5',
+        padding_x='1em',
+    )
+
+
 def card_participantes_onboarding() -> rx.Component:
     return rx.card(
         rx.vstack(
@@ -575,7 +608,10 @@ def card_participantes_onboarding() -> rx.Component:
                 width="100%"
             ),
             rx.vstack(
-                participantes_item("Thiago Silva", "thiago.silva@example.com", "TS", "Gerente", "Empresa X", "Ponto focal"),
+                rx.foreach(
+                    OnboardingDetailsState.dados_participantes,
+                    participantes_novo
+                ),
                 width="100%",
             ),
             width="100%"
@@ -658,6 +694,18 @@ def reuniao_item(descricao: str, titulo:str, data:str, hora:str) -> rx.Component
         border_radius="10px"
     )
 
+def reuniao_item_novo(reuniao: dict = {}) -> rx.Component: #continuar corrigindo isso
+    return rx.vstack(
+        rx.text("Blablabla", size='2', weight='medium', color_scheme='gray'),
+        rx.text("Blablabla", size='2', weight='bold'),
+        rx.text(f"data às hora", size='2', color_scheme='gray'),
+        spacing='1',
+        width="100%",
+        bg=rx.color("gray", 3),
+        padding="1em",
+        border_radius="10px"
+    )
+
 def card_reunioes() -> rx.Component:
     return rx.card(
         rx.vstack(
@@ -676,8 +724,14 @@ def card_reunioes() -> rx.Component:
                 width="100%"
             ),
             rx.vstack(
-                reuniao_item("Última reunião", "Alinhamento inicial do projeto", "22/10/2025", "10:00"),
-                reuniao_item("Próxima reunião", "Verificação do progresso", "29/10/2025", "14:00"),
+                rx.cond(
+                    OnboardingDetailsState.dados_reunioes.length() == 0,
+                    rx.text("Nenhuma reunião agendada/realizada"),
+                    rx.foreach(
+                        OnboardingDetailsState.dados_reunioes,
+                        reuniao_item_novo
+                    ),
+                ),
                 spacing="2",
                 width="100%",
             ),
@@ -692,6 +746,8 @@ def card_reunioes() -> rx.Component:
         width="100%",
         class_name = "shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
     )
+
+
 
 def header_onboarding_details() -> rx.Component:
     return rx.box(
