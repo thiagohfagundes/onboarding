@@ -30,7 +30,6 @@ class OnboardingDetailsState(rx.State):
         if self.id_onboarding != "":
             hubspot = Integracao()
             dados_ticket = hubspot.capturar_detalhes_ticket(self.id_onboarding)
-            print(dados_ticket)
 
         with rx.session() as session:
             dados = session.exec(

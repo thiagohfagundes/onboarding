@@ -3,6 +3,7 @@ from typing import List
 from app.models.processo import Processo, Template
 from datetime import datetime
 from sqlmodel import select
+from app.utils.integrador import Integracao
 
 class OnboardingsState(rx.State):
     processos: List['Processo'] = []
@@ -14,6 +15,7 @@ class OnboardingsState(rx.State):
     template: str = ""
     data_inicio: str = ""
     comentario: str = ""
+    onboardings: list = []
     
     templates = [
         "Template 1",

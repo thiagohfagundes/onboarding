@@ -5,10 +5,13 @@ from typing import List
 
 from app.components.componentes_gerais import heading_pagina
 from app.components.onboardings_list import create_onboarding_dialog, status_badge, progress_bar, nome_template_processo
+from app.utils.integrador import Integracao
+
 
 class OnboardingListState(rx.State):
     processos: List['Processo'] = []
     loading_processos: bool = True
+    
 
     def lista_processos(self):
         with rx.session() as session:

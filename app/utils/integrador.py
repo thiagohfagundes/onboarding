@@ -94,7 +94,6 @@ class Integracao:
     else:
         print(f"Erro ao buscar os pipelines: {response.status_code} - {response.text}")
         return []
-    
 
   def captura_detalhes_pipeline(self, pipeline_id):
     url = f'https://api.hubapi.com/crm/v3/pipelines/tickets/{pipeline_id}'
@@ -105,6 +104,13 @@ class Integracao:
     else:
         print("Erro ao buscar estágios do pipeline:", response.text)
         return []
+
+  def ids_fechados(self, pipeline_detalhes: list) -> list:
+    ids = []
+    for etapa in pipeline_detalhes:
+        if etapa.get('fechado') == 'true':
+            ids.append(etapa.get('id'))
+    return ids
 
   def capturar_objetos_associados(self, ticket_id: str, objeto_associado: str, propriedades: list = []):
     url = f"https://api.hubapi.com/crm/v3/objects/{self.tipo_pipeline}/{ticket_id}/associations/{objeto_associado}"
@@ -125,9 +131,9 @@ class Integracao:
           }
         else:
           params = {}
-        
+
         response = requests.get(url, headers=self.headers, params=params)
-        
+
         if response.status_code == 200:
           objetos_associados.append(response.json()['properties'])
 
@@ -137,9 +143,60 @@ class Integracao:
         print(f"[ERRO] Falha ao buscar objetos associados: {response.status_code}, {response.text}")
         return []
 
+  def captura_onboardings_em_andamento(self, pipeline_id: str):
+      BASE_URL_SEARCH = f"https://api.hubapi.com/crm/v3/objects/{self.tipo_pipeline}/search"
+      tickets = []
+      after = None
+
+      ids_fechados = self.ids_fechados(self.captura_detalhes_pipeline(pipeline_id))
+
+      while True:
+          body = {
+              "limit": 100,
+              "filterGroups": [
+                  {
+                      "filters": [
+                          {
+                              # filtrar pelo pipeline
+                              "propertyName": "hs_pipeline",
+                              "operator": "EQ",
+                              "value": pipeline_id
+                          },
+                          {
+                              "propertyName": "hs_pipeline_stage",
+                              "operator": "NOT_IN",
+                              "values": ids_fechados
+                          }
+                      ]
+                  }
+              ]
+          }
+
+          if after:
+              body["after"] = after
+
+          response = requests.post(BASE_URL_SEARCH, headers=self.headers, json=body)
+          if response.status_code != 200:
+              print('Erro ao buscar tickets:', response.text)
+              break
+
+          data = response.json()
+
+          # adicionar resultados desta página
+          results = data.get("results", [])
+          tickets.extend(results)
+
+          # paginação: pegar o cursor 'after' (se houver)
+          paging = data.get('paging', {})
+          after = paging.get('next', {}).get('after')
+          if not after:
+              break
+
+      return [{"nome": t['properties']['subject'], "conteudo": t['properties']['content']} for t in tickets]
+
   # ------------- FUNÇÕES DE DETALHES DO ONBOARDING ---------------------
-  def capturar_detalhes_ticket(self, 
-    ticket_id: str, 
+  def capturar_detalhes_ticket(self,
+    ticket_id: str,
     propriedades: list = [
       "subject",
       'content',
@@ -152,12 +209,12 @@ class Integracao:
     ]):
 
     url = f"https://api.hubapi.com/crm/v3/objects/{self.tipo_pipeline}/{ticket_id}"
-      
+
     params = {
         "properties": propriedades
     }
 
-    response = requests.get(url, headers=self.headers, params=params)     
+    response = requests.get(url, headers=self.headers, params=params)
 
     if response.status_code == 200:
       return self.traduzir_owner(self.parse_dates(response.json()['properties']))
@@ -209,12 +266,12 @@ class Integracao:
       "hs_email_from_firstname",   # Primeiro nome do remetente
       "hs_email_from_lastname",    # Sobrenome do remetente
       "hs_email_to_email",         # E-mail(s) do(s) destinatário(s)
-      "hs_email_to_firstname",     # Primeiro nome do(s) destinatário(s)
+      "hs_email_to_firstname",   # Primeiro nome do(s) destinatário(s)
       "hs_email_to_lastname"       # Sobrenome do(s) destinatário(s)
     ]
     registros = [self.parse_dates(r) for r in self.capturar_objetos_associados(ticket_id, "emails", propriedades_emails)]
     return [self.traduzir_owner(r) for r in registros]
-  
+
   def capturar_anotacoes(self, ticket_id):
     propriedades_notes = [
       "hs_timestamp",         # Data/hora da criação da nota (posiciona na timeline do CRM)
@@ -247,18 +304,18 @@ class Integracao:
       "hs_task_associated_tickets", # Tickets relacionados
       "hs_object_id"                # ID da tarefa
     ]
-    
+
     registros = [self.parse_dates(r) for r in self.capturar_objetos_associados(ticket_id, "tasks", propriedades_tarefas)]
     return [self.traduzir_owner(r) for r in registros]
 
   def capturar_empresa_associada(self, ticket_id):
     if self.propriedades_empresas == []:
       propriedades_empresas = [
-        "hs_object_id",                 
-        "name",                    
+        "hs_object_id",
+        "name",
         "createdate",
-        "domain",                                                               
-        "hs_lastmodifieddate"          
+        "domain",
+        "hs_lastmodifieddate"
       ]
     else:
       propriedades_empresas = self.propriedades_empresas

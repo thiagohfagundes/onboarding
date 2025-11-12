@@ -1,5 +1,17 @@
 import reflex as rx
 from app.states.processo import OnboardingsState
+from app.utils.integrador import Integracao
+
+class StateDialog(rx.State):
+    onboardings: list = ["Aguarde carregamento..."]
+    id_pipeline: str = '27860857'
+
+    rx.event
+    def lista_onboardings(self):
+        hubspot = Integracao()
+        onboardings = hubspot.captura_onboardings_em_andamento(self.id_pipeline)
+        onboardings = [o['nome'] for o in onboardings]
+        self.onboardings = onboardings
 
 def status_badge(status: rx.Var[str]) -> rx.Component:
     return rx.badge(
@@ -105,6 +117,19 @@ def create_onboarding_dialog() -> rx.Component:
                         class_name="mt-1 w-full p-2 border rounded-md",
                         placeholder="Selecione um template...",
                         on_change=OnboardingsState.set_template
+                    ),
+                    spacing='1',
+                    width='100%'
+                ),
+                rx.vstack(
+                    rx.text("Vincular entidade do Hubspot (Não obrigatório)", class_name="text-sm font-medium"),
+                    rx.select(
+                        StateDialog.onboardings,
+                        placeholder="Escolha um ticket para vincular",
+                        size='3',
+                        name="ticket",
+                        width="100%",
+                        on_open_change=StateDialog.lista_onboardings
                     ),
                     spacing='1',
                     width='100%'
