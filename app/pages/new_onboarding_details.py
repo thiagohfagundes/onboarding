@@ -16,8 +16,9 @@ class OnboardingDetailsState(rx.State):
     loading_dados: bool = True
     
     # Hubspot
-    id_onboarding: str = "34722100533"
+    id_onboarding: str = "29829309994"
     dados_ticket: dict = {}
+    dados_empresa: dict = {}
     dados_reunioes: list[dict] = []
     dados_participantes: list[dict] = []
 
@@ -37,7 +38,8 @@ class OnboardingDetailsState(rx.State):
             self.dados_ticket = hubspot.capturar_detalhes_ticket(self.id_onboarding)
             self.dados_reunioes = hubspot.capturar_reunioes(self.id_onboarding)
             self.dados_participantes = hubspot.capturar_contatos_associados(self.id_onboarding)
-            print(self.dados_reunioes)
+            self.dados_empresa = hubspot.capturar_empresa_associada(self.id_onboarding)[0] #tratar casos com mais de uma empresa
+            print(self.dados_ticket)
             
         with rx.session() as session:
             dados = session.exec(
@@ -208,10 +210,7 @@ class OnboardingDetailsState(rx.State):
                     except Exception as e:
                         print("Erro ao recarregar detalhes após criar tarefa:", e)
         except Exception as e:
-            print("finalizar_tarefa: erro ao atualizar no DB:", e)
-
-        
-        
+            print("finalizar_tarefa: erro ao atualizar no DB:", e) 
 
 def breadcrumbs(caminho: list = []) -> rx.Component:
     return rx.hstack(
@@ -245,6 +244,49 @@ def card_detalhes_onboarding(titulo: str, descricao: str, data_inicio: str, data
                 rx.text(f"Término: {data_fim}", size='2'),
                 align='center',
                 width='100%'
+            ),
+            width="100%"
+        ),
+        width="100%",
+        class_name="shadow-md"
+    )
+
+def card_detalhes_onboarding_hubspot() -> rx.Component:
+    return rx.card(
+        rx.vstack(
+            card_headings(f"Onboarding: {OnboardingDetailsState.dados_ticket.get("subject", "Ticket sem nome cadastrado")}"),
+            rx.hstack(
+                rx.icon("briefcase-business", size=15, color=rx.color("accent")),
+                rx.text(f"Empresa: {OnboardingDetailsState.dados_empresa.get("name", "Empresa sem nome cadastrado")}", size='2'),
+                align='center',
+                width='100%'
+            ),
+            rx.hstack(
+                rx.icon("calendar", size=15, color=rx.color("accent")),
+                rx.text(f"Início: {OnboardingDetailsState.dados_ticket.get("createdate", "Ticket sem nome cadastrado")}", size='2'),
+                align='center',
+                width='100%'
+            ),
+            rx.hstack(
+                rx.icon("calendar-check", size=15, color=rx.color("accent")),
+                rx.text(f"Término: {OnboardingDetailsState.dados_ticket.get("closed_date", "Sem data prevista")}", size='2'),
+                align='center',
+                width='100%'
+            ),
+            width="100%"
+        ),
+        width="100%",
+        class_name="shadow-md"
+    )
+
+def card_responsavel_implantacao() -> rx.Component:
+    return rx.card(
+        rx.vstack(
+            card_headings("Consultor(a) responsável"),
+            rx.vstack(
+                rx.text(OnboardingDetailsState.dados_ticket.get("hubspot_owner_nome", "Sem responsável atribuído")),
+                rx.text(OnboardingDetailsState.dados_ticket.get("hubspot_owner_email", "Sem e-mail cadastrado"), size='2', color_scheme='gray'),
+                spacing="1"
             ),
             width="100%"
         ),
@@ -678,27 +720,14 @@ def card_gamificacao() -> rx.Component:
         class_name = "shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
     )
 
-
-def card_consultor() -> rx.Component:
-    pass
-
-def reuniao_item(descricao: str, titulo:str, data:str, hora:str) -> rx.Component:
-    return rx.vstack(
-        rx.text(descricao, size='2', weight='medium', color_scheme='gray'),
-        rx.text(titulo, size='2', weight='bold'),
-        rx.text(f"{data} às {hora}", size='2', color_scheme='gray'),
-        spacing='1',
-        width="100%",
-        bg=rx.color("gray", 3),
-        padding="1em",
-        border_radius="10px"
-    )
-
 def reuniao_item_novo(reuniao: dict = {}) -> rx.Component: #continuar corrigindo isso
     return rx.vstack(
-        rx.text("Blablabla", size='2', weight='medium', color_scheme='gray'),
-        rx.text("Blablabla", size='2', weight='bold'),
-        rx.text(f"data às hora", size='2', color_scheme='gray'),
+        rx.text(reuniao.get("hs_meeting_location", "Reunião sem local"), size='2', weight='medium', color_scheme='gray'),
+        rx.text(reuniao.get("hs_meeting_title", "Reunião sem título"), size='2', weight='bold'),
+        rx.hstack(
+            rx.text(f"data às hora", size='2', color_scheme='gray'),
+            rx.badge(reuniao.get("hs_meeting_outcome", "Sem status"))
+        ),
         spacing='1',
         width="100%",
         bg=rx.color("gray", 3),
@@ -748,7 +777,6 @@ def card_reunioes() -> rx.Component:
     )
 
 
-
 def header_onboarding_details() -> rx.Component:
     return rx.box(
         rx.text("Detalhes do Onboarding", size="6", weight="bold", align="center"),
@@ -771,6 +799,8 @@ def bloco_esquedo() -> rx.Component:
                 "22/10/2025",
                 "22/12/2025"
             ),
+            card_detalhes_onboarding_hubspot(),
+            card_responsavel_implantacao(),
             card_participantes_onboarding(),
             card_reunioes(),
             card_gamificacao(),

@@ -30,20 +30,31 @@ class Integracao:
     self.membros_equipe = membros
 
   # --------- HELPERS -----------------
+  def parse_dates_datetime(self, d): 
+    return { 
+        k: 
+          datetime.fromisoformat(v.replace("Z", "+00:00")).date() 
+          if isinstance(v, str) and "T" in v and v.endswith("Z") 
+          else v 
+        for k, v in d.items() 
+    }
+
   def parse_dates(self, d):
     return {
-        k: (
-            datetime.fromisoformat(v.replace("Z", "+00:00")).date()
-            if isinstance(v, str) and "T" in v and v.endswith("Z")
-            else v
-        )
+        k: 
+          datetime.fromisoformat(v.replace("Z", "+00:00")).strftime("%d/%m/%Y")
+          if isinstance(v, str) and "T" in v and v.endswith("Z")
+          else v
         for k, v in d.items()
     }
   
   def traduzir_owner(self, objeto):
     # Cria um dicionário de mapeamento id → nome completo
     mapa_owners = {
-        str(p["id"]): f"{p.get('firstName', '')} {p.get('lastName', '')}".strip()
+        str(p["id"]): {
+            "name": f"{p.get('firstName', '')} {p.get('lastName', '')}".strip(),
+            "email": p.get('email', '')
+        }
         for p in self.proprietarios
     }
 
@@ -51,8 +62,11 @@ class Integracao:
     resultado = objeto.copy()
     owner_id = str(objeto.get("hubspot_owner_id"))
 
-    # Substitui pelo nome se encontrar
-    resultado["hubspot_owner_nome"] = mapa_owners.get(owner_id, "Desconhecido")
+    # Substitui pelo nome e adiciona o email se encontrar
+    owner_data = mapa_owners.get(owner_id, {"name": "Desconhecido", "email": "Desconhecido"})
+    resultado["hubspot_owner_nome"] = owner_data["name"]
+    resultado["hubspot_owner_email"] = owner_data["email"]
+    
     return resultado
 
   # ------------ FUNÇÕES BASE ----------------
